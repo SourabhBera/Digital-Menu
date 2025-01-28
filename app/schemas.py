@@ -1,15 +1,27 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Literal
+from fastapi import UploadFile
 
 class AddMenu(BaseModel):
-    dish_name: str
-    category: str
-    dish_type: Literal['veg', 'nonveg']  
-    price: int
+    dish_name: str = Field(..., max_length=100, description="Name of the dish")
+    category: str = Field(..., max_length=50, description="Category of the dish (e.g., Appetizer, Main Course)")
+    dish_type: Literal['Veg', 'Non-veg']  # Restrict values to 'veg' or 'nonveg'
+    price: int = Field(..., gt=0, description="Price of the dish in integer format")
+    image: UploadFile  # To handle image file upload
 
-    @field_validator('price')
-    def validate_price(cls, value):
-        if value <= 0:
-            raise ValueError("Price must be a positive integer.")
+    # Validators
+    @field_validator('dish_name')
+    def validate_dish_name(cls, value):
+        if not value.strip():
+            raise ValueError("Dish name cannot be empty.")
         return value
 
+    @field_validator('category')
+    def validate_category(cls, value):
+        if not value.strip():
+            raise ValueError("Category cannot be empty.")
+        return value
+
+
+class CategoryCreate(BaseModel):
+    name: str
