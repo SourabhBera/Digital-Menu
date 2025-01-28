@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import "./AddDishes.css";
 
 function AddDishes() {
@@ -7,9 +8,26 @@ function AddDishes() {
 
   const [dishName, setDishName] = useState("");
   const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState([]);
   const [type, setType] = useState("Veg");
   const [price, setPrice] = useState("");
   const [image, setImage] = useState(null);
+  const [message, setMessage] = useState("");
+
+  // Fetch categories from the backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/categories");
+        setCategories(response.data); // Assuming the API returns a list of categories
+      } catch (error) {
+        console.error("Error fetching categories:", error.response?.data || error.message);
+        setMessage("Failed to fetch categories.");
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -20,7 +38,7 @@ function AddDishes() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!dishName || !category || !price || !image) {
@@ -28,25 +46,32 @@ function AddDishes() {
       return;
     }
 
-    const newDish = {
-      dishName,
-      category,
-      type,
-      price,
-      image,
-    };
+    const formData = new FormData();
+    formData.append("dish_name", dishName);
+    formData.append("category_id", category);
+    formData.append("dish_type", type);
+    formData.append("price", price);
+    formData.append("image", image);
 
-    console.log("New Dish:", newDish);
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/admin/add-dishes", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-    // Clear form
-    setDishName("");
-    setCategory("");
-    setType("Veg");
-    setPrice("");
-    setImage(null);
+      setMessage(response.data.message || "Dish added successfully!");
+      // Clear form fields
+      setDishName("");
+      setCategory("");
+      setType("Veg");
+      setPrice("");
+      setImage(null);
 
-    alert("Dish added successfully!");
-    navigate("/"); // Redirect to home
+      // Redirect after success
+      navigate("/");
+    } catch (error) {
+      console.error("Error adding dish:", error.response?.data || error.message);
+      setMessage(error.response?.data?.detail || "Failed to add dish. Please try again.");
+    }
   };
 
   return (
@@ -61,6 +86,7 @@ function AddDishes() {
             value={dishName}
             onChange={(e) => setDishName(e.target.value)}
             placeholder="Enter dish name"
+            required
           />
         </div>
 
@@ -71,15 +97,16 @@ function AddDishes() {
             id="category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
+            required
           >
             <option value="" disabled>
               Select Category
             </option>
-            <option value="Drinks">Drinks</option>
-            <option value="Soups">Soups</option>
-            <option value="Bar Muchies">Bar Muchies</option>
-            <option value="Starters">Starters</option>
-            <option value="Main-Course">Main-Course</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -104,6 +131,7 @@ function AddDishes() {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="Enter price"
+            required
           />
         </div>
 
@@ -114,6 +142,7 @@ function AddDishes() {
             id="image"
             accept="image/*"
             onChange={handleImageUpload}
+            required
           />
           {image && <p>Selected file: {image.name}</p>}
         </div>
@@ -122,6 +151,7 @@ function AddDishes() {
           Add Dish
         </button>
       </form>
+      {message && <p className="message">{message}</p>}
     </div>
   );
 }

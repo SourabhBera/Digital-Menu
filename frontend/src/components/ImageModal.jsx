@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "./ImageModal.css";
 import { MdOutlineClose } from "react-icons/md";
 
-function ImageModal({ imageSrc, dishName, price }) {
+function ImageModal({ imageSrc, dishName, price, dish_type }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const openModal = () => setIsModalOpen(true);
@@ -13,6 +13,8 @@ function ImageModal({ imageSrc, dishName, price }) {
       <img src={imageSrc} alt="" className="circularimage" />
       <p className="dish-name">{dishName}</p>
       <p className="dish-price">₹{price}</p>
+      <p className="dish-type">{dish_type}</p>
+      
 
       {isModalOpen && (
         <div className="modal-overlay" onClick={closeModal}>

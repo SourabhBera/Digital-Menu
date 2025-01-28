@@ -1,60 +1,72 @@
 import React, { useState, useEffect } from "react";
 import ImageModal from "./ImageModal";
 import "./MenuSection.css";
-import foodimg1 from '../assets/images/foodimg1.jpg';
-import momos from '../assets/images/momos.jpg';
+import { fetchMenu } from "../api/Menu";  // Adjust the path based on your folder structure
 
-const Foodimage1 = foodimg1;
 
-function MenuSection() {
-  const [menuItems, setMenuItems] = useState({
-    starters: [],
-    soups: [],
-    mainCourse: [],
-  });
-
-  const [openCategory, setOpenCategory] = useState(null); 
+const MenuSection = () => {
+  const [menuItems, setMenuItems] = useState([]);
+  const [openCategory, setOpenCategory] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setMenuItems({
-      starters: [
-        { name: "Fried Momos", price: 220, image: momos },
-        { name: "Spring Rolls", price: 200, image: Foodimage1 },
-        { name: "Bruschetta", price: 250, image: Foodimage1 },
-      ],
-      soups: [
-        { name: "Tomato Soup", price: 150, image: Foodimage1 },
-        { name: "Chicken Soup", price: 180, image: Foodimage1 },
-      ],
-      mainCourse: [
-        { name: "Grilled Chicken", price: 550, image: Foodimage1 },
-        { name: "Pasta Primavera", price: 620, image: Foodimage1 },
-      ],
-    });
+    const getMenu = async () => {
+      try {
+        const fetchedMenu = await fetchMenu();
+        setMenuItems(fetchedMenu); // Directly set the menu data from the backend
+      } catch (err) {
+        setError("Failed to fetch menu. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getMenu();
   }, []);
 
   const toggleCategory = (category) => {
-    setOpenCategory(openCategory === category ? null : category); 
+    setOpenCategory(openCategory === category ? null : category);
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  const groupedMenuItems = menuItems.reduce((acc, item) => {
+    const category = (item.category_name || "Others").trim().toLowerCase();  // Use category_name now
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {});
+
 
   return (
     <div className="menu-section">
-      {["starters", "soups", "mainCourse"].map((category) => (
+      {Object.keys(groupedMenuItems).map((category) => (
         <div key={category} className="category">
           <button
-            className="btn btn-primary category-btn"
+            className="button-52" role="button"
             onClick={() => toggleCategory(category)}
           >
             {category.charAt(0).toUpperCase() + category.slice(1)}
           </button>
           {openCategory === category && (
             <div className="menu-items">
-              {menuItems[category].map((item, index) => (
+              {groupedMenuItems[category].map((item, index) => (
                 <div className="menu-item" key={index}>
+                  
                   <ImageModal
-                    imageSrc={item.image}
-                    dishName={item.name}
+                    imageSrc={`http://127.0.0.1:8000${item.image_path}`}
+                    dishName={item.dish_name}
                     price={item.price}
+                    dish_type={item.dish_type}
                   />
                 </div>
               ))}
@@ -64,6 +76,7 @@ function MenuSection() {
       ))}
     </div>
   );
-}
+};
 
 export default MenuSection;
+

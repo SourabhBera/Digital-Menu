@@ -1,56 +1,124 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import "./AdminHome.css";
+import axios from "axios";
+import UpdateCategory from "./UpdateCategory";
 
 function AdminHome() {
     const [showUploadSection, setShowUploadSection] = useState(false);
-    const [showAddCategoryForm, setShowAddCategoryForm] = useState(false); // New state for Add Category form
-    const [showEditCategoryForm, setShowEditCategoryForm] = useState(false); // New state for Edit Category form
-    const [categories, setCategories] = useState(["Category 1", "Category 2", "Category 3"]); // Sample categories
-    const [selectedCategory, setSelectedCategory] = useState(""); // Selected category
-    const [newCategoryName, setNewCategoryName] = useState(""); // Category name to update
+    const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+    const [showEditCategoryForm, setShowEditCategoryForm] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState("");
+    const [newCategoryName, setNewCategoryName] = useState("");
     const uploadSectionRef = useRef(null);
-    const navigate = useNavigate(); // Initialize navigate
+    const navigate = useNavigate();
+    
+    const fetchCategories = async () => {
+        try {
+            const response = await axios.get("http://127.0.0.1:8000/categories");
+            if (response.status === 200) {
+                console.log(response.data)
+                setCategories(response.data);
+            } else {
+                console.error("Unexpected response:", response);
+            }
+        } catch (error) {
+            console.error("Error fetching categories:", error.response?.data || error.message);
+            alert(error.response?.data?.detail || "Failed to fetch categories.");
+        }
+    };
+    
 
-    // Scroll to the bottom section after it's visible
+    useEffect(() => {
+        const fetchCategoriesOnMount = async () => {
+            try {
+                await fetchCategories();
+            } catch (error) {
+                console.error("Error during fetchCategories:", error);
+            }
+        };
+    
+        fetchCategoriesOnMount();
+    }, []);
+
     useEffect(() => {
         if (showUploadSection || showAddCategoryForm || showEditCategoryForm) {
             uploadSectionRef.current?.scrollIntoView({ behavior: "smooth" });
         }
-    }, [showUploadSection, showAddCategoryForm, showEditCategoryForm]); // This effect runs when section visibility is updated
+    }, [showUploadSection, showAddCategoryForm, showEditCategoryForm]);
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    const addCategory = async (categoryName) => {
+    setIsLoading(true);
+    try {
+        const response = await axios.post("http://127.0.0.1:8000/admin/create-category", { name: categoryName });
+        if (response.status === 201) {
+            console.log("Category added:", response.data);
+            setCategories((prev) => [...prev, categoryName]);
+            alert("Category added successfully!");
+        }
+    } catch (error) {
+        console.error("Error adding category:", error.response?.data || error.message);
+        alert(error.response?.data?.detail || "Failed to add category.");
+    } finally {
+        setIsLoading(false);
+    }
+};
+
 
     const handleEditCarouselClick = () => {
-        setShowUploadSection(true); // Trigger visibility of the upload section
-        setShowAddCategoryForm(false); // Hide the Add Category form
-        setShowEditCategoryForm(false); // Hide the Edit Category form
+        setShowUploadSection(true);
+        setShowAddCategoryForm(false);
+        setShowEditCategoryForm(false);
     };
 
     const handleAddCategoryClick = () => {
-        setShowAddCategoryForm(true); // Show the Add Category form
-        setShowUploadSection(false); // Hide the carousel upload section
-        setShowEditCategoryForm(false); // Hide the Edit Category form
+        setShowAddCategoryForm(true);
+        setShowUploadSection(false);
+        setShowEditCategoryForm(false);
     };
-
+    
     const handleEditCategoryClick = () => {
-        setShowEditCategoryForm(true); // Show the Edit Category form
-        setShowAddCategoryForm(false); // Hide the Add Category form
-        setShowUploadSection(false); // Hide the carousel upload section
+        setShowEditCategoryForm(true);
+        setShowAddCategoryForm(false);
+        setShowUploadSection(false);
     };
 
-    const handelredirect = (path) => {
-        navigate(path); // Redirect to the specified path
+    const handleRedirect = (path) => {
+        navigate(path);
     };
 
     const handleCategoryChange = (event) => {
-        setSelectedCategory(event.target.value); // Update selected category
-        setNewCategoryName(event.target.value); // Set the category name to the input field
+        setSelectedCategory(event.target.value);
+        setNewCategoryName(event.target.value);
     };
 
-    const handleCategoryUpdate = () => {
-        // Update the category in the list
-        setCategories(categories.map(cat => cat === selectedCategory ? newCategoryName : cat));
-        alert("Category updated successfully!");
+    const handleCategoryUpdate = async () => {
+        if (!selectedCategory || !newCategoryName.trim()) {
+            alert("Please select a category and provide a valid new name.");
+            return;
+        }
+    
+        try {
+            const response = await axios.put("http://127.0.0.1:8000/admin/update-category", {
+                oldName: selectedCategory,
+                newName: newCategoryName.trim(),
+            });
+    
+            if (response.status === 200) {
+                setCategories(categories.map((cat) => (cat === selectedCategory ? newCategoryName.trim() : cat)));
+                alert("Category updated successfully!");
+                setSelectedCategory("");
+                setNewCategoryName("");
+            }
+        } catch (error) {
+            console.error("Error updating category:", error.response?.data || error.message);
+            alert(error.response?.data?.detail || "Failed to update category.");
+        }
     };
+    
 
     return (
         <>
@@ -64,11 +132,11 @@ function AdminHome() {
                             <span className="text">Edit Carousel Images</span>
                         </button>
                         <br />
-                        <button className="button-48" onClick={() => handelredirect("/admin/add-dishes")}>
+                        <button className="button-48" onClick={() => handleRedirect("/admin/add-dishes")}>
                             <span className="text">Add Dishes</span>
                         </button>
                         <br />
-                        <button className="button-48" onClick={handleEditCarouselClick}>
+                        <button className="button-48" onClick={() => handleRedirect("/admin/edit-dishes")}>
                             <span className="text">Edit Dishes</span>
                         </button>
                         <br />
@@ -79,52 +147,54 @@ function AdminHome() {
                         <button className="button-48" onClick={handleEditCategoryClick}>
                             <span className="text">Edit Category</span>
                         </button>
-                        <br />
                     </div>
                 </div>
             </div>
 
-            {/* New Separate Div at the Bottom */}
             <div ref={uploadSectionRef} className="upload-section">
                 {showUploadSection && (
                     <>
-                        <h4 style={{ marginBottom: '30px' }}>Edit Carousel Images</h4>
-                        <div className="image">
-                            <h6>Carousel Img 1</h6>
-                            <div className="input-container">
-                                <input type="file" accept="image/*" className="file-input" />
-                                <button type="submit" className="upload-button">Upload</button>
+                        <h4>Edit Carousel Images</h4>
+                        {["Carousel Img 1", "Carousel Img 2", "Carousel Img 3"].map((label, index) => (
+                            <div className="image" key={index}>
+                                <h6>{label}</h6>
+                                <div className="input-container">
+                                    <input type="file" accept="image/*" className="file-input" />
+                                    <button type="submit" className="upload-button">Upload</button>
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="image">
-                            <h6>Carousel Img 2</h6>
-                            <div className="input-container">
-                                <input type="file" accept="image/*" className="file-input" />
-                                <button type="submit" className="upload-button">Upload</button>
-                            </div>
-                        </div>
-
-                        <div className="image">
-                            <h6>Carousel Img 3</h6>
-                            <div className="input-container">
-                                <input type="file" accept="image/*" className="file-input" />
-                                <button type="submit" className="upload-button">Upload</button>
-                            </div>
-                        </div>
+                        ))}
                     </>
                 )}
 
                 {showAddCategoryForm && (
                     <>
-                        <h4 style={{ marginBottom: '30px' }}>Add New Category</h4>
-                        <div className="add-category-form" style={{display:'block'}}>
+                        <h4>Add New Category</h4>
+                        <div className="add-category-form">
                             <input
                                 type="text"
                                 placeholder="Enter category name"
                                 className="category-input"
-                            /><br></br>
-                            <button type="submit" className="submit-category-button">
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                            />
+                            <br />
+                            <button
+                                type="button"
+                                className="submit-category-button"
+                                onClick={async () => {
+                                    if (newCategoryName.trim()) {
+                                        const response = await addCategory(newCategoryName);
+                                        if (response) {
+                                            setCategories((prev) => [...prev, newCategoryName]);
+                                            setNewCategoryName("");
+                                            alert("Category added successfully!");
+                                        }
+                                    } else {
+                                        alert("Category name cannot be empty.");
+                                    }
+                                }}
+                            >
                                 Add Category
                             </button>
                         </div>
@@ -132,33 +202,10 @@ function AdminHome() {
                 )}
 
                 {showEditCategoryForm && (
-                    <>
-                        <h4 style={{ marginBottom: '30px' }}>Edit Existing Category</h4>
-                        <div className="edit-category-form">
-                            <select
-                                value={selectedCategory}
-                                onChange={handleCategoryChange}
-                                className="category-select"
-                            >
-                                <option value="">Select Category</option>
-                                {categories.map((category, index) => (
-                                    <option key={index} value={category}>
-                                        {category}
-                                    </option>
-                                ))}
-                            </select>
-                            <input
-                                type="text"
-                                value={newCategoryName}
-                                onChange={(e) => setNewCategoryName(e.target.value)}
-                                placeholder="Edit category name"
-                                className="category-input"
-                            />
-                            <button type="button" onClick={handleCategoryUpdate} className="submit-category-button">
-                                Update Category
-                            </button>
-                        </div>
-                    </>
+                    <UpdateCategory
+                        categories={categories}
+                        setCategories={setCategories}
+                    />
                 )}
             </div>
         </>
